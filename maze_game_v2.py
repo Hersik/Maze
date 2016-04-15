@@ -3,7 +3,7 @@
 Task: Graphic part
 """
 ###############################################################################
-from gen.maze_generation import (generation,)
+from gen.maze_generator import (generation,)
 from random import randint as r
 from tkinter import (Tk, Label, Frame, messagebox, Canvas, SUNKEN, Menu, 
                      simpledialog, ALL)              
