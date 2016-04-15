@@ -1,32 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Apr 12 20:15:18 2016
-
-@author: ProjektovyManager
-
-Quest:Bludiste
-pro mapu o velikosti 600x600:
-maximalni pocet pro plynulé hraní je do 99x99
-hratelne jeste do 151x151
-vykreslení: Celá mapa - (191x191) max(251x251 -> 299x299) -> (ale skoro 
-                        nehratele z duvodu preklesovaní celé mapy)
-            Pozice hrace - (max 299x299) -> (ale z duvodu rozmeru okna pro 
-                            vykreslení, rychlost zůstává konstantní)
-format
-
-<typ>	význam
-s	řetězec
-d	číslo v desítkové soustavě
-b	číslo ve dvojkové soustavě
-o	číslo v osmičkové soustavě
-x, X	číslo v šestnáctkové soustavě
-e, E	reálné číslo v pevné řádové čárce
-f, F	reálné číslo v plovoucí řádové čárce
-g, G	zvolí e nebo f tak, aby se to dobře četlo
-n	jako g, ale podle locale rozhodne zda bude použita desetinná tečka nebo čárka
-c	znak -- převede celé číslo na znak
-NIC (<typ> není zadán)   	stejné jako s nebo d nebo g
-
+Task: Graphic part
 """
 ###############################################################################
 from gen.maze_generation import (generation,)
