@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Apr 16 20:43:08 2016
-Quest: Hl. program pro pripojení a ovládání pybots
-"""
 ###############################################################################
 import json
 import http.client
