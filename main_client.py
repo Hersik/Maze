@@ -1,32 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Apr 12 20:15:18 2016
-
-@author: ProjektovyManager
-
-Quest:Bludiste
-pro mapu o velikosti 600x600:
-maximalni pocet pro plynulé hraní je do 99x99
-hratelne jeste do 151x151
-vykreslení: Celá mapa - (191x191) max(251x251 -> 299x299) -> (ale skoro 
-                        nehratele z duvodu preklesovaní celé mapy)
-            Pozice hrace - (max 299x299) -> (ale z duvodu rozmeru okna pro 
-                            vykreslení, rychlost zůstává konstantní)
-format
-
-<typ>	význam
-s	řetězec
-d	číslo v desítkové soustavě
-b	číslo ve dvojkové soustavě
-o	číslo v osmičkové soustavě
-x, X	číslo v šestnáctkové soustavě
-e, E	reálné číslo v pevné řádové čárce
-f, F	reálné číslo v plovoucí řádové čárce
-g, G	zvolí e nebo f tak, aby se to dobře četlo
-n	jako g, ale podle locale rozhodne zda bude použita desetinná tečka nebo čárka
-c	znak -- převede celé číslo na znak
-NIC (<typ> není zadán)   	stejné jako s nebo d nebo g
-
+Quest:Maze
 """
 ###############################################################################
 from pybots_client import (Bot, )
@@ -62,6 +36,8 @@ class Maze_printer(Frame):
         self.data = ""
         self.bot_path = ""
         self.bots_position = None
+        self.player_x=StringVar()
+        self.player_y=StringVar()
         
         #creating menu
         self.MainMenu = Menu(self.mainWin)
@@ -74,9 +50,10 @@ class Maze_printer(Frame):
         self.map=Canvas(self.mainWin, width=650, height=650, bg="white")
         self.counterlbl=Label(self.mainWin, 
                               text=u"Počet kroků: {0:d} | "
-                                   u"Pozice-X: {1:d} | "
-                                   u"Pozice-Y: {2:d}".format(self.counter,
-                                                             0, 0),
+                                   u"Pozice-X: {1:s} | "
+                                   u"Pozice-Y: {2:s}".format(self.counter,
+                                                             self.player_x.get(), 
+                                                             self.player_y.get()),
                               relief=SUNKEN, borderwidth=1, width=85)                        
         self.map.pack()
         self.counterlbl.pack()
@@ -110,6 +87,14 @@ class Maze_printer(Frame):
            self.maze_width = len(self.maze[0])
            self.mybot_position = self.bots_position.get("my_bot")
            self.enemy_position = self.bots_position.get("enemy_bot")
+           self.player_x.set(self.mybot_position[0])
+           self.player_y.set(self.mybot_position[-1])
+           self.counterlbl.config(text=u"Počet kroků: {0:d} | "
+                                  u"Pozice-X: {1:s} | "
+                                  u"Pozice-Y: {2:s}".format(self.counter,
+                                                            self.player_x.get(), 
+                                                            self.player_y.get())
+                                 )
            self.show_maze()
            self.show_players()
         else:
@@ -151,10 +136,10 @@ class Maze_printer(Frame):
         """
             Method graphics rendering of maze
         """
+        #self.box_height, self.box_width - width, height one square
         self.map.delete(ALL)
         self.box_height = (int(self.map.cget("height"))/self.maze_height)
         self.box_width = (int(self.map.cget("width"))/self.maze_width)
-        #print(self.box_height, self.box_width) #width, height one square
         self.x1 = 0
         self.y1 = 0
         self.x2 = self.box_width
@@ -183,29 +168,63 @@ class Maze_printer(Frame):
     
     
     def game(self, *args):
-        for x in range(0,len(self.bot_path)):    
-            responce=self.MyBot.post('/action', bot_id=self.MyBot.bot_id, 
-                                action=self.bot_path[x])
-            if responce["state"] == "game_won":
-               print(responce["state"])
-               messagebox.showinfo(u"Stav hry",u"Vyhrál jsi!")
-               self.new_game()
-               break
-            elif responce["state"] == "game_lost":
-               print(responce["state"])
-               messagebox.showinfo(u"Stav hry",u"Bohužel jsi prohrál :(")
-               break
-               self.new_game()
-            else:
-               print(responce["state"])
-               self.map.delete("bot_my")
-               self.map.delete("bot_enemy")
-               self.bots_position=find_players(responce["game"]["map"])
-               self.mybot_position=self.bots_position.get("my_bot")
-               self.enemy_position=self.bots_position.get("enemy_bot")
-               self.show_players()
+        """
+            Method of automatic controlling the motion of the robot
+        """
+        responce=self.MyBot.post('/action', bot_id=self.MyBot.bot_id, 
+                                action=self.bot_path[self.counter])
+        if responce["state"] == "game_won":
+            print(responce["state"])
+            messagebox.showinfo(u"Stav hry",u"Vyhrál jsi!")
+            self.mainWin.after_cancel()
+            self.new_game()
+        elif responce["state"] == "game_lost":
+            print(responce["state"])
+            messagebox.showinfo(u"Stav hry",u"Bohužel jsi prohrál :(")
+            self.mainWin.after_cancel()
+            self.new_game()
+        elif responce["state"] == "movement_error":
+            self.map.delete("bot_my")
+            self.map.delete("bot_enemy")
+            
+            informations = objecttomap(responce["game"]["map"])
+            self.bot_path = moves(labyrint=informations[0],
+                                  location=informations[-1], 
+                                  start=informations[1])
+            self.bots_position=find_players(responce["game"]["map"])
+            self.mybot_position=self.bots_position.get("my_bot")
+            self.enemy_position=self.bots_position.get("enemy_bot")                                  
+            self.player_x.set(self.mybot_position[0])
+            self.player_y.set(self.mybot_position[-1])
+            self.show_players()
+            self.counterlbl.config(text=u"Počet kroků: {0:d} | "
+                                  u"Pozice-X: {1:s} | "
+                                  u"Pozice-Y: {2:s}".format(self.counter,
+                                                            self.player_x.get(), 
+                                                            self.player_y.get()))
+            self.counter=0
+            
+        else: 
+            self.map.delete("bot_my")
+            self.map.delete("bot_enemy")
+            self.bots_position=find_players(responce["game"]["map"])
+            self.mybot_position=self.bots_position.get("my_bot")
+            self.enemy_position=self.bots_position.get("enemy_bot")
+            self.player_x.set(self.mybot_position[0])
+            self.player_y.set(self.mybot_position[-1])
+            self.show_players()
+            self.counterlbl.config(text=u"Počet kroků: {0:d} | "
+                                  u"Pozice-X: {1:s} | "
+                                  u"Pozice-Y: {2:s}".format(self.counter,
+                                                            self.player_x.get(), 
+                                                            self.player_y.get()))   
+            self.counter=self.counter+1
+        self.mainWin.after(600, self.game)
                
     def step(self, *args):
+        """
+            Method of manually controlling the motion of the robot
+        """
         responce = self.MyBot.post('/action', bot_id=self.MyBot.bot_id, 
                                    action=self.bot_path[self.counter])
         self.map.delete("bot_my")
@@ -214,16 +233,28 @@ class Maze_printer(Frame):
             messagebox.showinfo(u"Stav hry",u"Vyhrál jsi!")
             self.MyBot.end_connection()
             self.new_game()
+            
         self.bots_position = find_players(responce["game"]["map"])
         self.mybot_position=self.bots_position.get("my_bot")
         self.enemy_position=self.bots_position.get("enemy_bot")
+        self.player_x.set(self.mybot_position[0])
+        self.player_y.set(self.mybot_position[-1])
         print(responce["state"])
         self.show_players()
+        self.counterlbl.config(text=u"Počet kroků: {0:d} | "
+                               u"Pozice-X: {1:s} | "
+                               u"Pozice-Y: {2:s}".format(self.counter,
+                                                         self.player_x.get(), 
+                                                         self.player_y.get()))
         self.counter=self.counter+1
     
+    
     def pain_block(self, color, *args):
+        """
+            Method for create one cell of maze in canvas
+        """
         self.map.create_rectangle(self.x1, self.y1, 
-                                  self.x2, self.y2, fill=color, width=0)
+                                  self.x2, self.y2, fill=color, width=0)    
     
     def close_app(self, *args):
         """
@@ -234,7 +265,7 @@ class Maze_printer(Frame):
             self.mainWin.destroy()
         else:
             pass
-        
+          
 ###############################################################################
 if __name__ == "__main__":
     root = Tk()
